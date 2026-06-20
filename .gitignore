@@ -1,4 +1,7 @@
 
+# Local environment overrides (keep .env.example tracked)
+.env
+
 # Playwright
 node_modules/
 /test-results/
