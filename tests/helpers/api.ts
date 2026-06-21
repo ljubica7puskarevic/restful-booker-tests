@@ -2,8 +2,8 @@ import { APIRequestContext, expect } from '@playwright/test';
 import { faker } from '@faker-js/faker';
 
 export const ADMIN_CREDS = {
-  username: process.env.BOOKER_USERNAME,
-  password: process.env.BOOKER_PASSWORD,
+  username: process.env.USERNAME,
+  password: process.env.PASSWORD,
 };
 
 export const BASIC_AUTH =

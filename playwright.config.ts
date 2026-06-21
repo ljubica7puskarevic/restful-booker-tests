@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+
+// override so .env wins over machine vars like Windows' built-in USERNAME
+dotenv.config({ override: true });
 
 export default defineConfig({
   testDir: './tests',
