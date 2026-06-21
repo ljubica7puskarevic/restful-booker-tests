@@ -1,126 +1,123 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { validBooking } from './helpers/api';
 
-const baseUrl = 'https://restful-booker.herokuapp.com';
-const creds = { username: 'admin', password: 'password123' };
+test.describe('Booking - CRUD happy paths', () => {
+  test('GET /booking returns a list of booking ids', async ({
+    request,
+  }) => {
+    const response = await request.get('/booking');
 
-const booking = {
-  firstname: 'Jim',
-  lastname: 'Brown',
-  totalprice: 111,
-  depositpaid: true,
-  bookingdates: { checkin: '2024-01-01', checkout: '2024-01-05' },
-  additionalneeds: 'Breakfast',
-};
+    expect(response.status()).toBe(200);
 
-test('GET /booking returns a list of booking ids', async ({
-  request,
-}) => {
-  const response = await request.get(`${baseUrl}/booking`);
-
-  expect(response.status()).toBe(200);
-
-  const body = await response.json();
-  expect(Array.isArray(body)).toBe(true);
-  expect(body.length).toBeGreaterThan(0);
-  expect(typeof body[0].bookingid).toBe('number');
-});
-
-test('GET /booking/:id returns the created booking', async ({
-  request,
-}) => {
-  const created = await request.post(`${baseUrl}/booking`, { data: booking });
-  const id = (await created.json()).bookingid;
-
-  const response = await request.get(`${baseUrl}/booking/${id}`);
-
-  expect(response.status()).toBe(200);
-  const body = await response.json();
-  expect(body).toEqual(booking);
-});
-
-test('POST /booking creates a booking and returns it', async ({
-  request,
-}) => {
-  const response = await request.post(`${baseUrl}/booking`, { data: booking });
-
-  expect(response.status()).toBe(200);
-
-  const body = await response.json();
-  expect(typeof body.bookingid).toBe('number');
-  expect(body.booking).toEqual(booking);
-});
-
-test('PUT /booking/:id updates a booking when authenticated', async ({
-  request,
-}) => {
-  const auth = await request.post(`${baseUrl}/auth`, { data: creds });
-  const token = (await auth.json()).token;
-
-  const created = await request.post(`${baseUrl}/booking`, { data: booking });
-  const id = (await created.json()).bookingid;
-
-  const update = { ...booking, firstname: 'Updated', totalprice: 999 };
-  const response = await request.put(`${baseUrl}/booking/${id}`, {
-    headers: { Cookie: `token=${token}` },
-    data: update,
+    const body = await response.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
+    expect(typeof body[0].bookingid).toBe('number');
   });
 
-  expect(response.status()).toBe(200);
-  const body = await response.json();
-  expect(body).toEqual(update);
-});
+  test('GET /booking/:id returns the created booking', async ({
+    request,
+    createBooking,
+  }) => {
+    const payload = validBooking();
+    const id = await createBooking(payload);
 
-test('DELETE /booking/:id removes a booking when authenticated', async ({
-  request,
-}) => {
-  const auth = await request.post(`${baseUrl}/auth`, { data: creds });
-  const token = (await auth.json()).token;
+    const response = await request.get(`/booking/${id}`);
+    expect(response.status()).toBe(200);
 
-  const created = await request.post(`${baseUrl}/booking`, { data: booking });
-  const id = (await created.json()).bookingid;
-
-  const deleteResponse = await request.delete(`${baseUrl}/booking/${id}`, {
-    headers: { Cookie: `token=${token}` },
-  });
-  expect(deleteResponse.status()).toBe(201);
-
-  const check = await request.get(`${baseUrl}/booking/${id}`);
-  expect(check.status()).toBe(404);
-});
-
-test('PUT /booking/:id without a token returns 403', async ({ request }) => {
-  const created = await request.post(`${baseUrl}/booking`, { data: booking });
-  const id = (await created.json()).bookingid;
-
-  const response = await request.put(`${baseUrl}/booking/${id}`, {
-    data: { ...booking, firstname: 'Hacker' },
+    const body = await response.json();
+    expect(body).toEqual(payload);
   });
 
-  expect(response.status()).toBe(403);
-});
+  test('POST /booking creates a booking and returns it', async ({
+    request,
+  }) => {
+    const payload = validBooking();
 
-// Defect: an invalid date range should be rejected, but the API accepts it.
-test('checkout before checkin should be rejected', async ({ request }) => {
-  const response = await request.post(`${baseUrl}/booking`, {
-    data: {
-      ...booking,
-      bookingdates: { checkin: '2025-12-31', checkout: '2025-01-01' },
-    },
+    const response = await request.post('/booking', { data: payload });
+
+    expect(response.status()).toBe(200);
+
+    const body = await response.json();
+    expect(typeof body.bookingid).toBe('number');
+    expect(body.booking).toEqual(payload);
   });
 
-  expect(response.status()).toBe(400);
-});
+  test('PUT /booking/:id updates a booking when authenticated', async ({
+    request,
+    createBooking,
+    token,
+  }) => {
+    const id = await createBooking();
+    const update = validBooking({ firstname: 'Updated', totalprice: 999 });
 
-// Defect: deleting an unknown id should be 404, but the API returns 405.
-test('deleting a non-existent booking should give 404, not 405', async ({
-  request,
-}) => {
-  const auth = await request.post(`${baseUrl}/auth`, { data: creds });
-  const token = (await auth.json()).token;
+    const response = await request.put(`/booking/${id}`, {
+      headers: { Cookie: `token=${token}` },
+      data: update,
+    });
 
-  const response = await request.delete(`${baseUrl}/booking/99999999`, {
-    headers: { Cookie: `token=${token}` },
+    expect(response.status()).toBe(200);
+
+    const body = await response.json();
+    expect(body).toEqual(update);
   });
 
-  expect(response.status()).toBe(404);
+  test('DELETE /booking/:id removes a booking when authenticated', async ({
+    request,
+    createBooking,
+    token,
+  }) => {
+    const id = await createBooking();
+
+    const deleteResponse = await request.delete(`/booking/${id}`, {
+      headers: { Cookie: `token=${token}` },
+    });
+
+    // restful-booker answers a successful delete with 201, not 200/204.
+    expect(deleteResponse.status()).toBe(201);
+
+    const getResponse = await request.get(`/booking/${id}`);
+    expect(getResponse.status()).toBe(404);
+  });
+});
+
+test.describe('Booking - negative & security', () => {
+  test('PUT /booking/:id without a token returns 403', async ({
+    request,
+    createBooking,
+  }) => {
+    const id = await createBooking();
+
+    const response = await request.put(`/booking/${id}`, {
+      data: validBooking({ firstname: 'Hacker' }),
+    });
+
+    expect(response.status()).toBe(403);
+  });
+});
+
+test.describe('Booking - known defects (expected to fail)', () => {
+  test('checkout before checkin should be rejected', async ({
+    request,
+  }) => {
+    const response = await request.post('/booking', {
+      data: validBooking({
+        bookingdates: { checkin: '2025-12-31', checkout: '2025-01-01' },
+      }),
+    });
+
+    expect(response.status()).toBe(400);
+  });
+
+  test('deleting a non-existent booking should give 404, not 405', async ({
+    request,
+    token,
+  }) => {
+    const response = await request.delete('/booking/99999999', {
+      headers: { Cookie: `token=${token}` },
+    });
+
+    // The route exists, the record doesn't — that's a 404, not a 405.
+    expect(response.status()).toBe(404);
+  });
 });

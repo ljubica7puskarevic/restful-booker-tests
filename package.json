@@ -1,15 +1,32 @@
 {
   "name": "restful-booker-tests",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {},
+  "description": "Playwright API tests for the restful-booker API",
+  "scripts": {
+    "test": "playwright test",
+    "test:report": "playwright show-report",
+    "test:bugs": "playwright test -g \"should\"",
+    "test:positive": "playwright test -g \"happy paths\"",
+    "test:negative": "playwright test -g \"negative & security\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@faker-js/faker": "^10.5.0",
     "@playwright/test": "^1.61.0",
-    "@types/node": "^25.9.3"
+    "@types/node": "^25.9.3",
+    "dotenv": "^17.4.2",
+    "eslint": "^10.5.0",
+    "eslint-plugin-playwright": "^2.10.4",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.1"
   }
 }
